@@ -153,6 +153,7 @@ impl DaplotApp {
         egui::Panel::top("top_panel").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.heading(RichText::new("daplot").strong());
+                ui.label(RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).weak());
                 ui.separator();
 
                 if !self.presentation_mode {
@@ -161,7 +162,7 @@ impl DaplotApp {
                         egui::TextEdit::singleline(&mut self.file_path_input)
                             .desired_width(320.0)
                             .hint_text(
-                                "/path/to/data.csv or .parquet — or drag & drop a file anywhere",
+                                "/path/to/file.csv, or drag & drop",
                             ),
                     );
                     let enter_pressed =

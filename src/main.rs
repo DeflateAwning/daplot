@@ -17,7 +17,7 @@ fn main() -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "daplot",
+        &format!("daplot v{}", env!("CARGO_PKG_VERSION")),
         native_options,
         Box::new(|cc| Ok(Box::new(DaplotApp::new(cc)))),
     )
