@@ -29,6 +29,16 @@ GUI program for plotting CSVs/Parquets, made with Rust
 
 ## Build and Run
 
+### From Prebuilt Binaries
+
+Windows and macOS binaries are attached to each
+[GitHub Release](https://github.com/DeflateAwning/daplot/releases).
+
+On macOS, the binaries are not signed/notarized, so Gatekeeper will block the
+first launch with an "unidentified developer" warning. To run it anyway,
+right-click (or Control-click) the binary and choose "Open", then confirm in
+the dialog that appears. This is only needed the first time.
+
 ### From Crates.io
 
 ```bash
