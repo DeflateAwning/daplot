@@ -420,6 +420,30 @@ impl DaplotApp {
     }
 }
 
+/// Pick the column for a newly-added series: the one right after the most
+/// recently added series' column (or after the X column, if there are no
+/// series yet), so repeated adds step through `y_columns` in order. Wraps
+/// around, and falls back to the first column once every column is used.
+fn next_series_column(y_columns: &[String], subplot: &SubplotConfig) -> Option<String> {
+    let start_col = subplot
+        .series
+        .last()
+        .map(|s| s.y_column.clone())
+        .or_else(|| subplot.x_column.clone());
+    let start_idx = start_col
+        .and_then(|c| y_columns.iter().position(|y| *y == c))
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    y_columns
+        .iter()
+        .cycle()
+        .skip(start_idx)
+        .take(y_columns.len())
+        .find(|c| !subplot.series.iter().any(|s| &s.y_column == *c))
+        .cloned()
+        .or_else(|| y_columns.first().cloned())
+}
+
 fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotConfig) {
     let all_columns = table.column_names();
     let y_columns = table.plottable_y_columns();
@@ -465,12 +489,7 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
         ui.label(RichText::new("Series").strong());
         if ui.button("➕ Add series").clicked() {
             let used = subplot.series.len();
-            let candidate = y_columns
-                .iter()
-                .find(|c| !subplot.series.iter().any(|s| &s.y_column == *c))
-                .cloned()
-                .or_else(|| y_columns.first().cloned());
-            if let Some(col) = candidate {
+            if let Some(col) = next_series_column(&y_columns, subplot) {
                 subplot.series.push(SeriesConfig::new(col, used));
             }
         }
@@ -750,4 +769,141 @@ fn naive_to_jiff(d: NaiveDate) -> jiff::civil::Date {
 fn jiff_to_naive(d: jiff::civil::Date) -> NaiveDate {
     NaiveDate::from_ymd_opt(d.year() as i32, d.month() as u32, d.day() as u32)
         .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn columns(names: &[&str]) -> Vec<String> {
+        names.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn first_add_skips_the_x_column() {
+        let subplot = SubplotConfig::new(0, Some("X".to_string()));
+        let y_columns = columns(&["X", "Y", "Z"]);
+        assert_eq!(
+            next_series_column(&y_columns, &subplot),
+            Some("Y".to_string())
+        );
+    }
+
+    #[test]
+    fn subsequent_adds_step_through_remaining_columns() {
+        let mut subplot = SubplotConfig::new(0, Some("X".to_string()));
+        let y_columns = columns(&["X", "Y", "Z"]);
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Y");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Z");
+        subplot.series.push(SeriesConfig::new(col, 1));
+    }
+
+    #[test]
+    fn wraps_around_and_reuses_columns_once_all_are_taken() {
+        let mut subplot = SubplotConfig::new(0, Some("X".to_string()));
+        let y_columns = columns(&["X", "Y", "Z"]);
+
+        for _ in 0..2 {
+            let col = next_series_column(&y_columns, &subplot).unwrap();
+            let used = subplot.series.len();
+            subplot.series.push(SeriesConfig::new(col, used));
+        }
+        // Y and Z are now used; the next pick wraps back to X.
+        assert_eq!(
+            next_series_column(&y_columns, &subplot),
+            Some("X".to_string())
+        );
+    }
+
+    #[test]
+    fn no_x_column_and_no_series_picks_the_first_column() {
+        let subplot = SubplotConfig::new(0, None);
+        let y_columns = columns(&["X", "Y", "Z"]);
+        assert_eq!(
+            next_series_column(&y_columns, &subplot),
+            Some("X".to_string())
+        );
+    }
+
+    #[test]
+    fn empty_column_list_yields_nothing() {
+        let subplot = SubplotConfig::new(0, Some("X".to_string()));
+        assert_eq!(next_series_column(&[], &subplot), None);
+    }
+
+    #[test]
+    fn works_when_x_axis_is_the_first_timestamp_column() {
+        // Mirrors a real file where the X axis is a timestamp column, not
+        // literally the first column, with junk columns around it.
+        let y_columns = columns(&["Timestamp1", "Timestamp2", "Random Garbage", "X", "Y", "Z"]);
+        let mut subplot = SubplotConfig::new(0, Some("Timestamp1".to_string()));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Timestamp2");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Random Garbage");
+        subplot.series.push(SeriesConfig::new(col, 1));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "X");
+    }
+
+    #[test]
+    fn works_when_x_axis_is_the_second_timestamp_column() {
+        let y_columns = columns(&["Timestamp1", "Timestamp2", "Random Garbage", "X", "Y", "Z"]);
+        let mut subplot = SubplotConfig::new(0, Some("Timestamp2".to_string()));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Random Garbage");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "X");
+        subplot.series.push(SeriesConfig::new(col, 1));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Y");
+    }
+
+    #[test]
+    fn advances_from_a_manually_reassigned_series_column() {
+        // The auto-picked column for a series can be overridden by hand via
+        // the series' own y-column dropdown. The *next* add should advance
+        // from that manually-picked column, not the one it replaced.
+        let y_columns = columns(&["Timestamp1", "Timestamp2", "Random Garbage", "X", "Y", "Z"]);
+        let mut subplot = SubplotConfig::new(0, Some("Timestamp1".to_string()));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Timestamp2");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Random Garbage");
+        subplot.series.push(SeriesConfig::new(col, 1));
+
+        // User manually reassigns that last series from "Random Garbage" to "X".
+        subplot.series.last_mut().unwrap().y_column = "X".to_string();
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Y");
+    }
+
+    #[test]
+    fn works_when_x_axis_timestamp_is_the_last_column() {
+        // If the timestamp used for the X axis happens to be the last
+        // plottable column, "next after X" wraps to the first column.
+        let y_columns = columns(&["Random Garbage", "Y", "Z", "X", "Timestamp1"]);
+        let subplot = SubplotConfig::new(0, Some("Timestamp1".to_string()));
+        assert_eq!(
+            next_series_column(&y_columns, &subplot),
+            Some("Random Garbage".to_string())
+        );
+    }
 }
