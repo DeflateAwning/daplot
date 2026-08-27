@@ -835,4 +835,75 @@ mod tests {
         let subplot = SubplotConfig::new(0, Some("X".to_string()));
         assert_eq!(next_series_column(&[], &subplot), None);
     }
+
+    #[test]
+    fn works_when_x_axis_is_the_first_timestamp_column() {
+        // Mirrors a real file where the X axis is a timestamp column, not
+        // literally the first column, with junk columns around it.
+        let y_columns = columns(&["Timestamp1", "Timestamp2", "Random Garbage", "X", "Y", "Z"]);
+        let mut subplot = SubplotConfig::new(0, Some("Timestamp1".to_string()));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Timestamp2");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Random Garbage");
+        subplot.series.push(SeriesConfig::new(col, 1));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "X");
+    }
+
+    #[test]
+    fn works_when_x_axis_is_the_second_timestamp_column() {
+        let y_columns = columns(&["Timestamp1", "Timestamp2", "Random Garbage", "X", "Y", "Z"]);
+        let mut subplot = SubplotConfig::new(0, Some("Timestamp2".to_string()));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Random Garbage");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "X");
+        subplot.series.push(SeriesConfig::new(col, 1));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Y");
+    }
+
+    #[test]
+    fn advances_from_a_manually_reassigned_series_column() {
+        // The auto-picked column for a series can be overridden by hand via
+        // the series' own y-column dropdown. The *next* add should advance
+        // from that manually-picked column, not the one it replaced.
+        let y_columns = columns(&["Timestamp1", "Timestamp2", "Random Garbage", "X", "Y", "Z"]);
+        let mut subplot = SubplotConfig::new(0, Some("Timestamp1".to_string()));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Timestamp2");
+        subplot.series.push(SeriesConfig::new(col, 0));
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Random Garbage");
+        subplot.series.push(SeriesConfig::new(col, 1));
+
+        // User manually reassigns that last series from "Random Garbage" to "X".
+        subplot.series.last_mut().unwrap().y_column = "X".to_string();
+
+        let col = next_series_column(&y_columns, &subplot).unwrap();
+        assert_eq!(col, "Y");
+    }
+
+    #[test]
+    fn works_when_x_axis_timestamp_is_the_last_column() {
+        // If the timestamp used for the X axis happens to be the last
+        // plottable column, "next after X" wraps to the first column.
+        let y_columns = columns(&["Random Garbage", "Y", "Z", "X", "Timestamp1"]);
+        let subplot = SubplotConfig::new(0, Some("Timestamp1".to_string()));
+        assert_eq!(
+            next_series_column(&y_columns, &subplot),
+            Some("Random Garbage".to_string())
+        );
+    }
 }
