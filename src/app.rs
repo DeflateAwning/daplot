@@ -189,20 +189,6 @@ impl DaplotApp {
                         );
                     }
                     ui.separator();
-                    let has_table = self.table.is_some();
-                    if ui
-                        .add_enabled(has_table, egui::Button::new("➕ Add subplot"))
-                        .clicked()
-                        && let Some(table) = &self.table
-                    {
-                        let default_x = self
-                            .filter_column
-                            .clone()
-                            .or_else(|| table.column_names().first().cloned());
-                        self.subplots
-                            .push(SubplotConfig::new(self.subplots.len(), default_x));
-                    }
-                    ui.separator();
                 }
 
                 ui.checkbox(&mut self.presentation_mode, "🎥 Presentation mode");
@@ -406,6 +392,17 @@ impl DaplotApp {
                         });
                         ui.add_space(8.0);
                         }
+
+                        if !self.presentation_mode
+                            && ui.button("➕ Add subplot").clicked()
+                        {
+                            let default_x = self
+                                .filter_column
+                                .clone()
+                                .or_else(|| table.column_names().first().cloned());
+                            self.subplots
+                                .push(SubplotConfig::new(self.subplots.len(), default_x));
+                        }
                     })
                     .response
                     .rect
@@ -485,15 +482,7 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
         });
 
     ui.separator();
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Series").strong());
-        if ui.button("➕ Add series").clicked() {
-            let used = subplot.series.len();
-            if let Some(col) = next_series_column(&y_columns, subplot) {
-                subplot.series.push(SeriesConfig::new(col, used));
-            }
-        }
-    });
+    ui.label(RichText::new("Series").strong());
 
     let mut remove_series: Option<usize> = None;
     for (si, series) in subplot.series.iter_mut().enumerate() {
@@ -591,6 +580,13 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
     }
     if let Some(idx) = remove_series {
         subplot.series.remove(idx);
+    }
+
+    if ui.button("➕ Add series").clicked() {
+        let used = subplot.series.len();
+        if let Some(col) = next_series_column(&y_columns, subplot) {
+            subplot.series.push(SeriesConfig::new(col, used));
+        }
     }
 }
 
