@@ -151,7 +151,7 @@ pub fn render_subplot(
         .placement(Placement::LeftBottom)
         .formatter(x_formatter);
     if x_categories.is_some() {
-        x_hints = x_hints.min_thickness(96.0);
+        x_hints = x_hints.min_thickness(28.0);
     }
 
     let y_left_hints = AxisHints::new_y()
