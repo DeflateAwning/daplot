@@ -58,7 +58,8 @@ performance when dealing with thousands of rows, and is tough to get a graph loo
 "just right" (axis labels, etc.).
 
 While reviewing time-series sensor data daily as part of some recent work, I
-decided it'd be worth it to build something like this for quick preview and assessments.
+decided it'd be worth it to build something like this for quick previews, assessments,
+and for sharing the generated graphs.
 
 This vibecoded tool hits the balance I was looking for. Hopefully it's useful for
 you as well.
