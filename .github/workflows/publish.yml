@@ -12,6 +12,10 @@ env:
   # but skip publishing to crates.io and skip uploading to a GitHub Release.
   IS_PRACTICE_RUN: ${{ github.event_name != 'push' && 'true' || 'false' }}
 
+# Permission to publish to GitHub Releases.
+permissions:
+  contents: write
+
 jobs:
   publish:
     name: Publish
@@ -87,7 +91,7 @@ jobs:
 
       - name: Upload to GitHub Release
         if: env.IS_PRACTICE_RUN == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*.exe
 
@@ -124,6 +128,6 @@ jobs:
 
       - name: Upload to GitHub Release
         if: env.IS_PRACTICE_RUN == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
