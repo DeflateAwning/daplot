@@ -48,3 +48,17 @@ cargo run --release
   very large files (many millions of rows) may be slow.
 - Text-as-X-axis categories are ordered by first appearance in the file, not
   alphabetically or by frequency.
+
+## Project History, Motivation, Creation
+
+Yes, I know Microsoft Excel exists.
+
+But, I don't like that Microsoft Excel requires Windows. LibreOffice Calc lacks
+performance when dealing with thousands of rows, and is tough to get a graph looking
+"just right" (axis labels, etc.).
+
+While reviewing time-series sensor data daily as part of some recent work, I
+decided it'd be worth it to build something like this for quick preview and assessments.
+
+This vibecoded tool hits the balance I was looking for. Hopefully it's useful for
+you as well.
