@@ -4,9 +4,13 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
+  # Manual (workflow_dispatch) runs are practice runs: they build everything
+  # but skip publishing to crates.io and skip uploading to a GitHub Release.
+  IS_PRACTICE_RUN: ${{ github.event_name != 'push' && 'true' || 'false' }}
 
 jobs:
   publish:
@@ -33,6 +37,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Verify tag matches Cargo.toml version
+        if: github.event_name == 'push'
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           CARGO_VERSION="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
@@ -41,8 +46,15 @@ jobs:
             exit 1
           fi
 
+      - name: Publish (dry run)
+        if: env.IS_PRACTICE_RUN == 'true'
+        run: cargo publish --dry-run
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Publish
-        run: cargo publish --token "${CARGO_REGISTRY_TOKEN}"
+        if: env.IS_PRACTICE_RUN == 'false'
+        run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -67,7 +79,14 @@ jobs:
           mkdir -p dist
           cp target/release/daplot.exe "dist/daplot-${GITHUB_REF_NAME}-windows-x86_64.exe"
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: daplot-windows-x86_64
+          path: dist/*.exe
+
       - name: Upload to GitHub Release
+        if: env.IS_PRACTICE_RUN == 'false'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.exe
@@ -97,7 +116,14 @@ jobs:
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/daplot" "dist/daplot-${GITHUB_REF_NAME}-${{ matrix.target }}"
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: daplot-${{ matrix.target }}
+          path: dist/*
+
       - name: Upload to GitHub Release
+        if: env.IS_PRACTICE_RUN == 'false'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
