@@ -20,6 +20,9 @@ pub struct DaplotApp {
     load_error: Option<String>,
 
     subplots: Vec<SubplotConfig>,
+    // When enabled, panning/zooming the X axis of any subplot applies the
+    // same X range to every other subplot (via egui_plot's link_axis group).
+    link_x_axis: bool,
 
     // Global time-range filter, applied (by row index) to every subplot.
     filter_enabled: bool,
@@ -54,6 +57,7 @@ impl Default for DaplotApp {
             file_path_input: String::new(),
             load_error: None,
             subplots: Vec::new(),
+            link_x_axis: false,
             filter_enabled: false,
             filter_column: None,
             filter_start: today,
@@ -161,9 +165,7 @@ impl DaplotApp {
                     let resp = ui.add(
                         egui::TextEdit::singleline(&mut self.file_path_input)
                             .desired_width(320.0)
-                            .hint_text(
-                                "/path/to/file.csv, or drag & drop",
-                            ),
+                            .hint_text("/path/to/file.csv, or drag & drop"),
                     );
                     let enter_pressed =
                         resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
@@ -337,6 +339,8 @@ impl DaplotApp {
                         self.begin_capture(ui.ctx(), ScreenshotAction::CopyToClipboard);
                     }
                     ui.label(RichText::new("(captures all subplots together)").weak());
+                    ui.separator();
+                    ui.checkbox(&mut self.link_x_axis, "🔗 Link X axis across subplots");
                 });
                 ui.add_space(4.0);
             }
@@ -413,7 +417,13 @@ impl DaplotApp {
 
                                     ui.add_space(4.0);
                                 }
-                                render_subplot(ui, &table, row_mask.as_ref(), &mut self.subplots[i]);
+                                render_subplot(
+                                    ui,
+                                    &table,
+                                    row_mask.as_ref(),
+                                    &mut self.subplots[i],
+                                    self.link_x_axis,
+                                );
                             });
                         });
                         ui.add_space(8.0);

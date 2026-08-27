@@ -3,7 +3,7 @@
 
 use crate::data::Table;
 use crate::model::{AxisSide, ChartType, SubplotConfig};
-use eframe::egui::{Color32, Ui};
+use eframe::egui::{Color32, Id, Ui};
 use egui_plot::{AxisHints, Bar, BarChart, Legend, Line, Placement, Plot, PlotPoints, Points};
 
 /// Render one subplot (title, plot area) into `ui`. Returns nothing; all
@@ -13,6 +13,7 @@ pub fn render_subplot(
     table: &Table,
     row_mask: Option<&Vec<bool>>,
     subplot: &mut SubplotConfig,
+    link_x_axis: bool,
 ) {
     let Some(x_col_name) = subplot.x_column.clone() else {
         ui.colored_label(
@@ -170,6 +171,10 @@ pub fn render_subplot(
         .allow_scroll([x_interactive, y_interactive])
         .allow_boxed_zoom(x_interactive && y_interactive)
         .custom_x_axes(vec![x_hints]);
+
+    if link_x_axis {
+        plot = plot.link_axis(Id::new("daplot_shared_x_axis"), [true, false]);
+    }
 
     if has_secondary {
         let y_right_hints = AxisHints::new_y()
