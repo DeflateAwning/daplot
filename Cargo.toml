@@ -1,6 +1,6 @@
 [package]
 name = "daplot"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 description = "A desktop GUI app for plotting CSV/Parquet tabular data with Excel-like charting features."
 license = "BSD-3-Clause"
