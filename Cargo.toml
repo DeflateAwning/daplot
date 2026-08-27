@@ -1,0 +1,25 @@
+[package]
+name = "daplot"
+version = "0.1.0"
+edition = "2024"
+description = "A desktop GUI app for plotting CSV/Parquet tabular data with Excel-like charting features."
+license = "MIT"
+
+[dependencies]
+eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts", "persistence", "wayland", "x11"] }
+egui = "0.36"
+egui_plot = "0.37"
+egui_extras = { version = "0.36", features = ["datepicker", "serde"] }
+jiff = "0.2"
+csv = "1.4"
+arrow = { version = "59", default-features = false, features = ["csv"] }
+parquet = { version = "59", default-features = false, features = ["arrow"] }
+chrono = "0.4"
+anyhow = "1"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+arboard = { version = "3.6.1", default-features = false, features = ["image-data"] }
+rfd = "0.17.2"
+
+[profile.release]
+opt-level = 3
+lto = true
