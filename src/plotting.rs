@@ -202,10 +202,7 @@ pub fn render_subplot(
     let plot_response = plot.show(ui, |plot_ui| {
         if reset_x || reset_y {
             let current = plot_ui.auto_bounds();
-            plot_ui.set_auto_bounds([
-                reset_x || current.x,
-                reset_y || current.y,
-            ]);
+            plot_ui.set_auto_bounds([reset_x || current.x, reset_y || current.y]);
         }
         if !x_interactive {
             plot_ui.set_plot_bounds_x(x_axis_min..=x_axis_max);
