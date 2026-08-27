@@ -158,9 +158,17 @@ pub fn render_subplot(
         .label(subplot.y_axis_title.clone())
         .placement(Placement::LeftBottom);
 
+    // A fixed axis is clamped to its min/max every frame (below) rather than
+    // being mouse-zoomable/draggable, so disable those interactions on it.
+    let x_interactive = !subplot.x_axis_fixed;
+    let y_interactive = !subplot.y_axis_fixed;
+
     let mut plot = Plot::new(subplot.id)
         .height(subplot.height)
-        .allow_scroll(true)
+        .allow_zoom([x_interactive, y_interactive])
+        .allow_drag([x_interactive, y_interactive])
+        .allow_scroll([x_interactive, y_interactive])
+        .allow_boxed_zoom(x_interactive && y_interactive)
         .custom_x_axes(vec![x_hints]);
 
     if has_secondary {
@@ -186,7 +194,18 @@ pub fn render_subplot(
         subplot.reset_scale = false;
     }
 
-    plot.show(ui, |plot_ui| {
+    let x_axis_min = subplot.x_axis_min;
+    let x_axis_max = subplot.x_axis_max;
+    let y_axis_min = subplot.y_axis_min;
+    let y_axis_max = subplot.y_axis_max;
+
+    let plot_response = plot.show(ui, |plot_ui| {
+        if !x_interactive {
+            plot_ui.set_plot_bounds_x(x_axis_min..=x_axis_max);
+        }
+        if !y_interactive {
+            plot_ui.set_plot_bounds_y(y_axis_min..=y_axis_max);
+        }
         for p in &prepared {
             let points = PlotPoints::from(p.points.clone());
             match p.chart_type {
@@ -226,7 +245,12 @@ pub fn render_subplot(
                 }
             }
         }
+        plot_ui.plot_bounds()
     });
+
+    let bounds = plot_response.inner;
+    subplot.last_x_bounds = (bounds.min()[0], bounds.max()[0]);
+    subplot.last_y_bounds = (bounds.min()[1], bounds.max()[1]);
 }
 
 fn min_max_padded(vals: &[f64]) -> (f64, f64) {

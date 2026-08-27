@@ -100,6 +100,21 @@ pub struct SubplotConfig {
     #[allow(dead_code)]
     pub collapsed_settings: bool,
     pub reset_scale: bool,
+
+    /// When set, the X/Y axis is clamped to `*_axis_min..=*_axis_max` every
+    /// frame instead of being mouse-zoomable/draggable.
+    pub x_axis_fixed: bool,
+    pub x_axis_min: f64,
+    pub x_axis_max: f64,
+    pub y_axis_fixed: bool,
+    pub y_axis_min: f64,
+    pub y_axis_max: f64,
+    /// The plot's actual X/Y bounds as of the last frame it was drawn (auto
+    /// or fixed). Used to pre-fill the fixed-range fields above with
+    /// something sensible, and to seed the time-range filter from the
+    /// current view.
+    pub last_x_bounds: (f64, f64),
+    pub last_y_bounds: (f64, f64),
 }
 
 impl SubplotConfig {
@@ -117,6 +132,14 @@ impl SubplotConfig {
             height: 320.0,
             collapsed_settings: false,
             reset_scale: false,
+            x_axis_fixed: false,
+            x_axis_min: 0.0,
+            x_axis_max: 1.0,
+            y_axis_fixed: false,
+            y_axis_min: 0.0,
+            y_axis_max: 1.0,
+            last_x_bounds: (0.0, 1.0),
+            last_y_bounds: (0.0, 1.0),
         }
     }
 

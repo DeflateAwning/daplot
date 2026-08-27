@@ -364,6 +364,30 @@ impl DaplotApp {
                                             );
                                             if ui.button("🔄 Reset scale").clicked() {
                                                 self.subplots[i].reset_scale = true;
+                                                self.subplots[i].x_axis_fixed = false;
+                                                self.subplots[i].y_axis_fixed = false;
+                                            }
+                                            let x_is_datetime = self.subplots[i]
+                                                .x_column
+                                                .as_ref()
+                                                .and_then(|c| table.column_index(c))
+                                                .is_some_and(|idx| table.is_datetime(idx));
+                                            if ui
+                                                .add_enabled(
+                                                    x_is_datetime,
+                                                    egui::Button::new("🕒 Use view as time filter"),
+                                                )
+                                                .on_hover_text(
+                                                    "Set the global time-range filter to this \
+                                                     subplot's current X-axis view",
+                                                )
+                                                .clicked()
+                                            {
+                                                let (xmin, xmax) = self.subplots[i].last_x_bounds;
+                                                self.filter_column = self.subplots[i].x_column.clone();
+                                                self.filter_start = seconds_to_date(xmin);
+                                                self.filter_end = seconds_to_date(xmax);
+                                                self.filter_enabled = true;
                                             }
                                             if ui.button("🗑 Remove subplot").clicked() {
                                                 remove_idx = Some(i);
@@ -480,6 +504,51 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
             ui.text_edit_singleline(&mut subplot.y2_axis_title);
             ui.end_row();
         });
+
+    ui.separator();
+    ui.label(RichText::new("Axis scale").strong());
+    ui.label(
+        RichText::new(
+            "Leave unfixed to zoom/pan with the mouse (scroll, drag, box-select). \
+             Fix a range to type exact bounds instead.",
+        )
+        .weak()
+        .small(),
+    );
+    ui.horizontal(|ui| {
+        if ui
+            .checkbox(&mut subplot.x_axis_fixed, "Fix X range")
+            .changed()
+            && subplot.x_axis_fixed
+        {
+            (subplot.x_axis_min, subplot.x_axis_max) = subplot.last_x_bounds;
+        }
+        ui.add_enabled(
+            subplot.x_axis_fixed,
+            egui::DragValue::new(&mut subplot.x_axis_min).prefix("min "),
+        );
+        ui.add_enabled(
+            subplot.x_axis_fixed,
+            egui::DragValue::new(&mut subplot.x_axis_max).prefix("max "),
+        );
+    });
+    ui.horizontal(|ui| {
+        if ui
+            .checkbox(&mut subplot.y_axis_fixed, "Fix Y range")
+            .changed()
+            && subplot.y_axis_fixed
+        {
+            (subplot.y_axis_min, subplot.y_axis_max) = subplot.last_y_bounds;
+        }
+        ui.add_enabled(
+            subplot.y_axis_fixed,
+            egui::DragValue::new(&mut subplot.y_axis_min).prefix("min "),
+        );
+        ui.add_enabled(
+            subplot.y_axis_fixed,
+            egui::DragValue::new(&mut subplot.y_axis_max).prefix("max "),
+        );
+    });
 
     ui.separator();
     ui.label(RichText::new("Series").strong());
