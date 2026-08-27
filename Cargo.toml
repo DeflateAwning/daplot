@@ -14,7 +14,7 @@ egui_extras = { version = "0.36", features = ["datepicker", "serde"] }
 jiff = "0.2"
 csv = "1.4"
 arrow = { version = "59", default-features = false, features = ["csv"] }
-parquet = { version = "59", default-features = false, features = ["arrow"] }
+parquet = { version = "59", features = ["arrow"] }
 chrono = "0.4"
 anyhow = "1"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
