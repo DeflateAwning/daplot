@@ -8,13 +8,24 @@ use egui_plot::{AxisHints, Bar, BarChart, Legend, Line, Placement, Plot, PlotPoi
 
 /// Render one subplot (title, plot area) into `ui`. Returns nothing; all
 /// interaction happens through `subplot`'s own widgets drawn elsewhere.
-pub fn render_subplot(ui: &mut Ui, table: &Table, row_mask: Option<&Vec<bool>>, subplot: &mut SubplotConfig) {
+pub fn render_subplot(
+    ui: &mut Ui,
+    table: &Table,
+    row_mask: Option<&Vec<bool>>,
+    subplot: &mut SubplotConfig,
+) {
     let Some(x_col_name) = subplot.x_column.clone() else {
-        ui.colored_label(Color32::from_rgb(200, 120, 40), "Pick an X column below to see this plot.");
+        ui.colored_label(
+            Color32::from_rgb(200, 120, 40),
+            "Pick an X column below to see this plot.",
+        );
         return;
     };
     let Some(x_idx) = table.column_index(&x_col_name) else {
-        ui.colored_label(Color32::RED, format!("X column '{x_col_name}' not found in data."));
+        ui.colored_label(
+            Color32::RED,
+            format!("X column '{x_col_name}' not found in data."),
+        );
         return;
     };
 
@@ -24,7 +35,7 @@ pub fn render_subplot(ui: &mut Ui, table: &Table, row_mask: Option<&Vec<bool>>, 
 
     let row_count = table.row_count;
     let included: Vec<usize> = (0..row_count)
-        .filter(|&i| row_mask.map_or(true, |m| m.get(i).copied().unwrap_or(true)))
+        .filter(|&i| row_mask.is_none_or(|m| m.get(i).copied().unwrap_or(true)))
         .collect();
 
     // Pre-compute filtered, sorted (x, y) series for every visible series.
@@ -118,21 +129,22 @@ pub fn render_subplot(ui: &mut Ui, table: &Table, row_mask: Option<&Vec<bool>>, 
 
     // ----- Axis label / tick formatters ---------------------------------
     let x_fmt_categories = x_categories.clone();
-    let x_formatter = move |mark: egui_plot::GridMark, _range: &std::ops::RangeInclusive<f64>| -> String {
-        let tick = mark.value;
-        if x_is_datetime {
-            format_timestamp(tick)
-        } else if let Some(labels) = &x_fmt_categories {
-            let idx = tick.round() as i64;
-            if idx >= 0 && (idx as usize) < labels.len() && (tick - tick.round()).abs() < 1e-6 {
-                labels[idx as usize].clone()
+    let x_formatter =
+        move |mark: egui_plot::GridMark, _range: &std::ops::RangeInclusive<f64>| -> String {
+            let tick = mark.value;
+            if x_is_datetime {
+                format_timestamp(tick)
+            } else if let Some(labels) = &x_fmt_categories {
+                let idx = tick.round() as i64;
+                if idx >= 0 && (idx as usize) < labels.len() && (tick - tick.round()).abs() < 1e-6 {
+                    labels[idx as usize].clone()
+                } else {
+                    String::new()
+                }
             } else {
-                String::new()
+                egui_plot::format_number(tick, 5)
             }
-        } else {
-            egui_plot::format_number(tick, 5)
-        }
-    };
+        };
 
     let mut x_hints = AxisHints::new_x()
         .label(subplot.x_axis_title.clone())
@@ -155,9 +167,11 @@ pub fn render_subplot(ui: &mut Ui, table: &Table, row_mask: Option<&Vec<bool>>, 
         let y_right_hints = AxisHints::new_y()
             .label(subplot.y2_axis_title.clone())
             .placement(Placement::RightTop)
-            .formatter(move |mark: egui_plot::GridMark, _range: &std::ops::RangeInclusive<f64>| {
-                egui_plot::format_number(remap_primary_to_secondary(mark.value), 4)
-            });
+            .formatter(
+                move |mark: egui_plot::GridMark, _range: &std::ops::RangeInclusive<f64>| {
+                    egui_plot::format_number(remap_primary_to_secondary(mark.value), 4)
+                },
+            );
         plot = plot.custom_y_axes(vec![y_left_hints, y_right_hints]);
     } else {
         plot = plot.custom_y_axes(vec![y_left_hints]);
@@ -287,5 +301,3 @@ fn format_timestamp(secs: f64) -> String {
         _ => String::new(),
     }
 }
-
-

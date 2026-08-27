@@ -97,6 +97,7 @@ pub struct SubplotConfig {
     pub series: Vec<SeriesConfig>,
     pub show_legend: bool,
     pub height: f32,
+    #[allow(dead_code)]
     pub collapsed_settings: bool,
     pub reset_scale: bool,
 }

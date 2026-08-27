@@ -83,16 +83,15 @@ impl DaplotApp {
                 // Reset everything derived from the old table.
                 self.filter_column = table.first_datetime_column();
                 self.filter_enabled = false;
-                if let Some(col_name) = &self.filter_column {
-                    if let Some(idx) = table.column_index(col_name) {
-                        if let ColumnKind::DateTime(vals) = &table.columns[idx].kind {
-                            let (mn, mx) = min_max(vals);
-                            self.data_min_date = seconds_to_date(mn);
-                            self.data_max_date = seconds_to_date(mx);
-                            self.filter_start = self.data_min_date;
-                            self.filter_end = self.data_max_date;
-                        }
-                    }
+                if let Some(col_name) = &self.filter_column
+                    && let Some(idx) = table.column_index(col_name)
+                    && let ColumnKind::DateTime(vals) = &table.columns[idx].kind
+                {
+                    let (mn, mx) = min_max(vals);
+                    self.data_min_date = seconds_to_date(mn);
+                    self.data_max_date = seconds_to_date(mx);
+                    self.filter_start = self.data_min_date;
+                    self.filter_end = self.data_max_date;
                 }
 
                 // Start the user off with one subplot using the detected x
@@ -161,22 +160,24 @@ impl DaplotApp {
                     let resp = ui.add(
                         egui::TextEdit::singleline(&mut self.file_path_input)
                             .desired_width(320.0)
-                            .hint_text("/path/to/data.csv or .parquet — or drag & drop a file anywhere"),
+                            .hint_text(
+                                "/path/to/data.csv or .parquet — or drag & drop a file anywhere",
+                            ),
                     );
-                    let enter_pressed = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                    let enter_pressed =
+                        resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
                     if ui.button("Load").clicked() || enter_pressed {
                         let path = PathBuf::from(self.file_path_input.trim());
                         self.load_file(path);
                     }
-                    if ui.button("📂 Browse…").clicked() {
-                        if let Some(path) = rfd::FileDialog::new()
+                    if ui.button("📂 Browse…").clicked()
+                        && let Some(path) = rfd::FileDialog::new()
                             .add_filter("CSV / Parquet", &["csv", "parquet"])
                             .add_filter("All files", &["*"])
                             .pick_file()
-                        {
-                            self.file_path_input = path.to_string_lossy().to_string();
-                            self.load_file(path);
-                        }
+                    {
+                        self.file_path_input = path.to_string_lossy().to_string();
+                        self.load_file(path);
                     }
                     if let Some(path) = &self.file_path {
                         ui.label(
@@ -192,15 +193,14 @@ impl DaplotApp {
                     if ui
                         .add_enabled(has_table, egui::Button::new("➕ Add subplot"))
                         .clicked()
+                        && let Some(table) = &self.table
                     {
-                        if let Some(table) = &self.table {
-                            let default_x = self
-                                .filter_column
-                                .clone()
-                                .or_else(|| table.column_names().first().cloned());
-                            self.subplots
-                                .push(SubplotConfig::new(self.subplots.len(), default_x));
-                        }
+                        let default_x = self
+                            .filter_column
+                            .clone()
+                            .or_else(|| table.column_names().first().cloned());
+                        self.subplots
+                            .push(SubplotConfig::new(self.subplots.len(), default_x));
                     }
                     ui.separator();
                 }
@@ -236,7 +236,11 @@ impl DaplotApp {
                     ui.label("Load a CSV or Parquet file to get started.");
                     return;
                 };
-                ui.label(format!("{} rows, {} columns", table.row_count, table.columns.len()));
+                ui.label(format!(
+                    "{} rows, {} columns",
+                    table.row_count,
+                    table.columns.len()
+                ));
                 egui::ScrollArea::vertical()
                     .max_height(180.0)
                     .id_salt("columns_scroll")
@@ -269,14 +273,14 @@ impl DaplotApp {
                                 let selected = self.filter_column.as_deref() == Some(name.as_str());
                                 if ui.selectable_label(selected, name).clicked() {
                                     self.filter_column = Some(name.clone());
-                                    if let Some(idx) = table.column_index(name) {
-                                        if let ColumnKind::DateTime(vals) = &table.columns[idx].kind {
-                                            let (mn, mx) = min_max(vals);
-                                            self.data_min_date = seconds_to_date(mn);
-                                            self.data_max_date = seconds_to_date(mx);
-                                            self.filter_start = self.data_min_date;
-                                            self.filter_end = self.data_max_date;
-                                        }
+                                    if let Some(idx) = table.column_index(name)
+                                        && let ColumnKind::DateTime(vals) = &table.columns[idx].kind
+                                    {
+                                        let (mn, mx) = min_max(vals);
+                                        self.data_min_date = seconds_to_date(mn);
+                                        self.data_max_date = seconds_to_date(mx);
+                                        self.filter_start = self.data_min_date;
+                                        self.filter_end = self.data_max_date;
                                     }
                                 }
                             }
@@ -426,7 +430,12 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
         .show(ui, |ui| {
             ui.label("X column:");
             egui::ComboBox::from_id_salt("x_col")
-                .selected_text(subplot.x_column.clone().unwrap_or_else(|| "(choose)".into()))
+                .selected_text(
+                    subplot
+                        .x_column
+                        .clone()
+                        .unwrap_or_else(|| "(choose)".into()),
+                )
                 .show_ui(ui, |ui| {
                     for name in &all_columns {
                         let selected = subplot.x_column.as_deref() == Some(name.as_str());
@@ -515,13 +524,19 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
                             })
                             .show_ui(ui, |ui| {
                                 if ui
-                                    .selectable_label(series.axis == AxisSide::Primary, "Primary axis")
+                                    .selectable_label(
+                                        series.axis == AxisSide::Primary,
+                                        "Primary axis",
+                                    )
                                     .clicked()
                                 {
                                     series.axis = AxisSide::Primary;
                                 }
                                 if ui
-                                    .selectable_label(series.axis == AxisSide::Secondary, "Secondary axis")
+                                    .selectable_label(
+                                        series.axis == AxisSide::Secondary,
+                                        "Secondary axis",
+                                    )
                                     .clicked()
                                 {
                                     series.axis = AxisSide::Secondary;
@@ -536,7 +551,10 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
                                     .prefix("width "),
                             );
                         }
-                        if matches!(series.chart_type, ChartType::Scatter | ChartType::LineMarker) {
+                        if matches!(
+                            series.chart_type,
+                            ChartType::Scatter | ChartType::LineMarker
+                        ) {
                             ui.add(
                                 egui::DragValue::new(&mut series.marker_radius)
                                     .range(0.5..=10.0)
@@ -613,7 +631,8 @@ impl DaplotApp {
         // past the visible viewport (e.g. when scrolled).
         let rect = rect.intersect(ctx.input(|i| i.viewport_rect()));
         if !rect.is_positive() {
-            self.screenshot_error = Some("Nothing visible to capture — scroll the subplots into view.".into());
+            self.screenshot_error =
+                Some("Nothing visible to capture — scroll the subplots into view.".into());
             return;
         }
         let title = self
@@ -625,11 +644,7 @@ impl DaplotApp {
             .to_string();
 
         let cropped = image.region(&rect, Some(ctx.pixels_per_point()));
-        let rgba: Vec<u8> = cropped
-            .pixels
-            .iter()
-            .flat_map(|c| c.to_array())
-            .collect();
+        let rgba: Vec<u8> = cropped.pixels.iter().flat_map(|c| c.to_array()).collect();
         let (width, height) = (cropped.size[0], cropped.size[1]);
 
         self.screenshot_error = None;
@@ -640,16 +655,15 @@ impl DaplotApp {
                     .add_filter("PNG image", &["png"])
                     .set_file_name(&default_name)
                     .save_file()
-                {
-                    if let Err(e) = image::save_buffer(
+                    && let Err(e) = image::save_buffer(
                         &path,
                         &rgba,
                         width as u32,
                         height as u32,
                         image::ColorType::Rgba8,
-                    ) {
-                        self.screenshot_error = Some(format!("Failed to save PNG: {e}"));
-                    }
+                    )
+                {
+                    self.screenshot_error = Some(format!("Failed to save PNG: {e}"));
                 }
             }
             ScreenshotAction::CopyToClipboard => match arboard::Clipboard::new() {
@@ -675,7 +689,13 @@ impl DaplotApp {
 fn sanitize_filename(name: &str) -> String {
     let cleaned: String = name
         .chars()
-        .map(|c| if c.is_alphanumeric() || matches!(c, '-' | '_' | ' ') { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || matches!(c, '-' | '_' | ' ') {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     let trimmed = cleaned.trim();
     if trimmed.is_empty() {

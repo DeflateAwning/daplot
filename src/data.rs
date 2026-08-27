@@ -1,7 +1,7 @@
 //! Loading CSV / Parquet files into a small in-memory columnar `Table`,
 //! with automatic per-column type inference (numeric / datetime / text).
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -145,14 +145,14 @@ fn load_csv(path: &Path, delimiter: u8) -> Result<Table> {
     let mut raw: Vec<Vec<String>> = vec![Vec::new(); headers.len()];
     for result in rdr.records() {
         let record = result.context("reading CSV row")?;
-        for i in 0..headers.len() {
-            raw[i].push(record.get(i).unwrap_or("").to_string());
+        for (i, col) in raw.iter_mut().enumerate() {
+            col.push(record.get(i).unwrap_or("").to_string());
         }
     }
 
     let row_count = raw.first().map(|c| c.len()).unwrap_or(0);
     let mut columns = Vec::with_capacity(headers.len());
-    for (name, values) in headers.into_iter().zip(raw.into_iter()) {
+    for (name, values) in headers.into_iter().zip(raw) {
         let kind = infer_column(&values);
         columns.push(ColumnData { name, kind });
     }
@@ -215,10 +215,10 @@ fn parse_datetime(s: &str) -> Option<f64> {
 
     const DATE_FORMATS: &[&str] = &["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d"];
     for f in DATE_FORMATS {
-        if let Ok(d) = NaiveDate::parse_from_str(s, f) {
-            if let Some(dt) = d.and_hms_opt(0, 0, 0) {
-                return Some(Utc.from_utc_datetime(&dt).timestamp() as f64);
-            }
+        if let Ok(d) = NaiveDate::parse_from_str(s, f)
+            && let Some(dt) = d.and_hms_opt(0, 0, 0)
+        {
+            return Some(Utc.from_utc_datetime(&dt).timestamp() as f64);
         }
     }
     None
@@ -232,8 +232,8 @@ fn load_parquet(path: &Path) -> Result<Table> {
     use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 
     let file = std::fs::File::open(path).with_context(|| format!("opening {:?}", path))?;
-    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
-        .context("reading parquet metadata")?;
+    let builder =
+        ParquetRecordBatchReaderBuilder::try_new(file).context("reading parquet metadata")?;
     let schema = builder.schema().clone();
     let reader = builder.build().context("building parquet reader")?;
 
@@ -279,8 +279,20 @@ fn load_parquet(path: &Path) -> Result<Table> {
 fn classify_arrow_type(dt: &arrow::datatypes::DataType) -> u8 {
     use arrow::datatypes::DataType::*;
     match dt {
-        Int8 | Int16 | Int32 | Int64 | UInt8 | UInt16 | UInt32 | UInt64 | Float16 | Float32
-        | Float64 | Boolean | Decimal128(_, _) | Decimal256(_, _) => 1,
+        Int8
+        | Int16
+        | Int32
+        | Int64
+        | UInt8
+        | UInt16
+        | UInt32
+        | UInt64
+        | Float16
+        | Float32
+        | Float64
+        | Boolean
+        | Decimal128(_, _)
+        | Decimal256(_, _) => 1,
         Date32 | Date64 | Timestamp(_, _) => 2,
         _ => 3,
     }
@@ -291,16 +303,17 @@ fn append_numeric(col: &arrow::array::ArrayRef, out: &mut Vec<f64>) {
     use arrow::compute::cast;
     use arrow::datatypes::DataType;
 
-    match cast(col, &DataType::Float64) {
-        Ok(casted) => {
-            if let Some(arr) = casted.as_any().downcast_ref::<Float64Array>() {
-                for i in 0..arr.len() {
-                    out.push(if arr.is_null(i) { f64::NAN } else { arr.value(i) });
-                }
-                return;
-            }
+    if let Ok(casted) = cast(col, &DataType::Float64)
+        && let Some(arr) = casted.as_any().downcast_ref::<Float64Array>()
+    {
+        for i in 0..arr.len() {
+            out.push(if arr.is_null(i) {
+                f64::NAN
+            } else {
+                arr.value(i)
+            });
         }
-        Err(_) => {}
+        return;
     }
     for _ in 0..col.len() {
         out.push(f64::NAN);
@@ -340,7 +353,11 @@ fn append_datetime(col: &arrow::array::ArrayRef, out: &mut Vec<f64>) {
             TimeUnit::Second => {
                 if let Some(arr) = col.as_any().downcast_ref::<TimestampSecondArray>() {
                     for i in 0..arr.len() {
-                        out.push(if arr.is_null(i) { f64::NAN } else { arr.value(i) as f64 });
+                        out.push(if arr.is_null(i) {
+                            f64::NAN
+                        } else {
+                            arr.value(i) as f64
+                        });
                     }
                     return;
                 }
@@ -414,17 +431,17 @@ fn append_text(col: &arrow::array::ArrayRef, out: &mut Vec<String>) {
         }
         return;
     }
-    if let Ok(casted) = cast(col, &DataType::Utf8) {
-        if let Some(arr) = casted.as_any().downcast_ref::<StringArray>() {
-            for i in 0..arr.len() {
-                out.push(if arr.is_null(i) {
-                    String::new()
-                } else {
-                    arr.value(i).to_string()
-                });
-            }
-            return;
+    if let Ok(casted) = cast(col, &DataType::Utf8)
+        && let Some(arr) = casted.as_any().downcast_ref::<StringArray>()
+    {
+        for i in 0..arr.len() {
+            out.push(if arr.is_null(i) {
+                String::new()
+            } else {
+                arr.value(i).to_string()
+            });
         }
+        return;
     }
     for _ in 0..col.len() {
         out.push(String::new());
