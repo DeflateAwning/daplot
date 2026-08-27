@@ -13,6 +13,10 @@ GUI program for plotting CSVs/Parquets, made with Rust
 - Date/time-range filter
 - Export/copy as a PNG
 
+## Example
+
+![docs/example_output_1.png](docs/example_output_1.png)
+
 ## Requirements
 
 - Rust 1.95+ (edition 2024).
