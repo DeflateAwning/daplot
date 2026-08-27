@@ -363,7 +363,8 @@ impl DaplotApp {
                                                     .prefix("height: "),
                                             );
                                             if ui.button("🔄 Reset scale").clicked() {
-                                                self.subplots[i].reset_scale = true;
+                                                self.subplots[i].reset_x = true;
+                                                self.subplots[i].reset_y = true;
                                                 self.subplots[i].x_axis_fixed = false;
                                                 self.subplots[i].y_axis_fixed = false;
                                             }
@@ -510,14 +511,14 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
     ui.label(
         RichText::new(
             "Leave unfixed to zoom/pan with the mouse (scroll, drag, box-select). \
-             Fix a range to type exact bounds instead.",
+             Lock a range to type exact bounds instead.",
         )
         .weak()
         .small(),
     );
     ui.horizontal(|ui| {
         if ui
-            .checkbox(&mut subplot.x_axis_fixed, "Fix X range")
+            .checkbox(&mut subplot.x_axis_fixed, "Lock X range")
             .changed()
             && subplot.x_axis_fixed
         {
@@ -531,10 +532,14 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
             subplot.x_axis_fixed,
             egui::DragValue::new(&mut subplot.x_axis_max).prefix("max "),
         );
+        if ui.button("🔄 Reset X scale").clicked() {
+            subplot.x_axis_fixed = false;
+            subplot.reset_x = true;
+        }
     });
     ui.horizontal(|ui| {
         if ui
-            .checkbox(&mut subplot.y_axis_fixed, "Fix Y range")
+            .checkbox(&mut subplot.y_axis_fixed, "Lock Y range")
             .changed()
             && subplot.y_axis_fixed
         {
@@ -548,6 +553,10 @@ fn subplot_settings_ui(ui: &mut egui::Ui, table: &Table, subplot: &mut SubplotCo
             subplot.y_axis_fixed,
             egui::DragValue::new(&mut subplot.y_axis_max).prefix("max "),
         );
+        if ui.button("🔄 Reset Y scale").clicked() {
+            subplot.y_axis_fixed = false;
+            subplot.reset_y = true;
+        }
     });
 
     ui.separator();

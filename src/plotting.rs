@@ -189,10 +189,10 @@ pub fn render_subplot(
         plot = plot.legend(Legend::default());
     }
 
-    if subplot.reset_scale {
-        plot = plot.reset();
-        subplot.reset_scale = false;
-    }
+    let reset_x = subplot.reset_x;
+    let reset_y = subplot.reset_y;
+    subplot.reset_x = false;
+    subplot.reset_y = false;
 
     let x_axis_min = subplot.x_axis_min;
     let x_axis_max = subplot.x_axis_max;
@@ -200,6 +200,13 @@ pub fn render_subplot(
     let y_axis_max = subplot.y_axis_max;
 
     let plot_response = plot.show(ui, |plot_ui| {
+        if reset_x || reset_y {
+            let current = plot_ui.auto_bounds();
+            plot_ui.set_auto_bounds([
+                reset_x || current.x,
+                reset_y || current.y,
+            ]);
+        }
         if !x_interactive {
             plot_ui.set_plot_bounds_x(x_axis_min..=x_axis_max);
         }
@@ -251,6 +258,16 @@ pub fn render_subplot(
     let bounds = plot_response.inner;
     subplot.last_x_bounds = (bounds.min()[0], bounds.max()[0]);
     subplot.last_y_bounds = (bounds.min()[1], bounds.max()[1]);
+
+    // Keep the displayed min/max fields tracking the live view for any axis
+    // that isn't locked, so they reflect the current pan/zoom rather than
+    // going stale until the axis is locked.
+    if !subplot.x_axis_fixed {
+        (subplot.x_axis_min, subplot.x_axis_max) = subplot.last_x_bounds;
+    }
+    if !subplot.y_axis_fixed {
+        (subplot.y_axis_min, subplot.y_axis_max) = subplot.last_y_bounds;
+    }
 }
 
 fn min_max_padded(vals: &[f64]) -> (f64, f64) {

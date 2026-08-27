@@ -99,7 +99,8 @@ pub struct SubplotConfig {
     pub height: f32,
     #[allow(dead_code)]
     pub collapsed_settings: bool,
-    pub reset_scale: bool,
+    pub reset_x: bool,
+    pub reset_y: bool,
 
     /// When set, the X/Y axis is clamped to `*_axis_min..=*_axis_max` every
     /// frame instead of being mouse-zoomable/draggable.
@@ -131,7 +132,8 @@ impl SubplotConfig {
             show_legend: true,
             height: 320.0,
             collapsed_settings: false,
-            reset_scale: false,
+            reset_x: false,
+            reset_y: false,
             x_axis_fixed: false,
             x_axis_min: 0.0,
             x_axis_max: 1.0,
