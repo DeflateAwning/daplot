@@ -3,8 +3,42 @@
 
 use crate::data::Table;
 use crate::model::{AxisSide, ChartType, SubplotConfig};
-use eframe::egui::{Color32, Id, Ui};
+use eframe::egui::{Color32, Id, TextStyle, Ui};
 use egui_plot::{AxisHints, Bar, BarChart, Legend, Line, Placement, Plot, PlotPoints, Points};
+
+/// Extra padding (beyond the widest tick-label text) reserved for the
+/// left-side Y axis strip, matching the side margin `egui_plot` itself
+/// applies to Y tick labels.
+const Y_AXIS_WIDTH_PADDING: f32 = 10.0;
+
+/// Widest left-Y-axis strip needed across `subplots`, so that when the X
+/// axis is linked, every subplot can be told to reserve the same width for
+/// its Y axis — keeping their plot areas (and hence X axes / X-axis titles)
+/// aligned vertically. Estimated from each subplot's current Y bounds since
+/// `egui_plot` doesn't expose actual tick text before it lays the plot out.
+pub fn shared_y_axis_min_thickness(ui: &Ui, subplots: &[SubplotConfig]) -> f32 {
+    let font_id = TextStyle::Body.resolve(ui.style());
+    let mut widest: f32 = 0.0;
+    for subplot in subplots {
+        for value in [subplot.y_axis_min, subplot.y_axis_max] {
+            if !value.is_finite() {
+                continue;
+            }
+            let text = egui_plot::format_number(value, 5);
+            let width = ui
+                .painter()
+                .layout_no_wrap(text, font_id.clone(), Color32::WHITE)
+                .size()
+                .x;
+            widest = widest.max(width);
+        }
+    }
+    if widest > 0.0 {
+        widest + Y_AXIS_WIDTH_PADDING
+    } else {
+        14.0 // egui_plot's own default min thickness
+    }
+}
 
 /// Render one subplot (title, plot area) into `ui`. Returns nothing; all
 /// interaction happens through `subplot`'s own widgets drawn elsewhere.
@@ -14,6 +48,7 @@ pub fn render_subplot(
     row_mask: Option<&Vec<bool>>,
     subplot: &mut SubplotConfig,
     link_x_axis: bool,
+    shared_y_axis_min_thickness: Option<f32>,
 ) {
     let Some(x_col_name) = subplot.x_column.clone() else {
         ui.colored_label(
@@ -155,9 +190,12 @@ pub fn render_subplot(
         x_hints = x_hints.min_thickness(28.0);
     }
 
-    let y_left_hints = AxisHints::new_y()
+    let mut y_left_hints = AxisHints::new_y()
         .label(subplot.y_axis_title.clone())
         .placement(Placement::LeftBottom);
+    if let Some(width) = shared_y_axis_min_thickness {
+        y_left_hints = y_left_hints.min_thickness(width);
+    }
 
     // A fixed axis is clamped to its min/max every frame (below) rather than
     // being mouse-zoomable/draggable, so disable those interactions on it.

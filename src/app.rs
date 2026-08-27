@@ -345,6 +345,14 @@ impl DaplotApp {
                 ui.add_space(4.0);
             }
 
+            // When X axes are linked, every subplot's Y-axis strip is forced
+            // to the same width so their plot areas (and thus X axes / X
+            // titles) line up vertically; computed once per frame from all
+            // subplots' current Y bounds.
+            let shared_y_axis_min_thickness = self
+                .link_x_axis
+                .then(|| crate::plotting::shared_y_axis_min_thickness(ui, &self.subplots));
+
             let scroll_output = egui::ScrollArea::vertical()
                 .id_salt("subplots_scroll")
                 .show(ui, |ui| {
@@ -423,6 +431,7 @@ impl DaplotApp {
                                     row_mask.as_ref(),
                                     &mut self.subplots[i],
                                     self.link_x_axis,
+                                    shared_y_axis_min_thickness,
                                 );
                             });
                         });
